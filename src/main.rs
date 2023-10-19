@@ -7,8 +7,10 @@ use nannou::prelude::*;
 
 use clap::{Parser, Subcommand};
 use lazy_static::lazy_static;
+use nannou::app::Builder;
 use nannou::color::Alpha;
-use crate::particle::Particle;
+use crate::particle::Particle2;
+use crate::scenes::lorenz::{LorenzOptions, LorenzScene};
 use crate::scenes::perlin_flow::{PerlinFlowOptions, PerlinFlowScene};
 use crate::scenes::Scene;
 
@@ -37,6 +39,18 @@ enum SceneArgs {
         /// Toggles whether to show the moving dot
         #[arg(long, default_value_t = false)]
         hide_dots: bool
+    },
+    /// A 3D simulation of a Lorenz attractor
+    Lorenz {
+        /// The rho from the Lorenz equation, see wikipedia
+        #[arg(long, default_value_t = 28.0)]
+        rho: f32,
+        /// The sigma from the Lorenz equation, see wikipedia
+        #[arg(long, default_value_t = 10.0)]
+        sigma: f32,
+        /// The beta from the Lorenz equation, see wikipedia
+        #[arg(long, default_value_t = 2.66667)]
+        beta: f32,
     }
 }
 
@@ -46,13 +60,14 @@ fn main() {
 
     let args = Args::parse();
 
-    let app;
     match args.scene {
         SceneArgs::PerlinFlow { .. } => {
-            app = PerlinFlowScene::new_scene(&PerlinFlowOptions::from_args(&args)).app();
+            PerlinFlowScene::new_scene(&PerlinFlowOptions::from_args(&args)).app().run();
+        }
+        SceneArgs::Lorenz { .. } => {
+            LorenzScene::new_scene(&LorenzOptions::from_args(&args)).app().run();
         }
     }
 
-    app.run();
     // nannou::app(model).update(update).simple_window(view).size(1800, 1200).run();
 }

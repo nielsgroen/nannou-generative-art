@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use nannou::app::Builder;
 use nannou::color::Alpha;
 use crate::{Args, SceneArgs};
-use crate::particle::{Particle, scale_coords};
+use crate::particle::{Particle2, scale_coords};
 use crate::scenes::Scene;
 
 
@@ -63,7 +63,7 @@ impl Scene for PerlinFlowScene {
     }
 
     fn app(&self) -> Builder<Self::Model> {
-        nannou::app(model).update(update).simple_window(view).size(1800, 1200)
+        nannou::app(self.model_fn).update(self.update_fn).simple_window(self.view_fn).size(1800, 1200)
     }
 }
 
@@ -77,9 +77,8 @@ pub struct Model<T>
     pub seed: u32,
     pub noise_fn: T,
     pub noise_scale: f64,
-    pub particles: Vec<Particle>,
+    pub particles: Vec<Particle2>,
 }
-
 
 
 fn model(app: &App) -> Model<Perlin> {
@@ -93,7 +92,7 @@ fn model(app: &App) -> Model<Perlin> {
         noise_fn,
         noise_scale: 4.0,
         particles: vec![0; 1000].iter().map(|_|
-            Particle::new(
+            Particle2::new(
                 pt2(
                     thread_rng().gen_range(win.x.start as i32 / 3..win.x.end as i32 / 3) as f32,
                     thread_rng().gen_range(win.y.start as i32 / 3..win.y.end as i32 / 3) as f32,
@@ -145,7 +144,7 @@ fn view<T>(app: &App, model: &Model<T>, frame: Frame)
 
     if !OPTIONS.hide_dots {
         for particle in model.particles.iter() {
-            draw.ellipse().radius(1.0).color(Alpha { color: particle.color.color, alpha: particle.color.alpha * time_passed * 1000.0 }).xy(particle.position);
+            draw.ellipse().radius(particle.radius).color(Alpha { color: particle.color.color, alpha: particle.color.alpha * time_passed * 1000.0 }).xy(particle.position);
         }
     }
 
