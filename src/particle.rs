@@ -19,10 +19,6 @@ impl Particle {
             position,
             velocity: vec2(0.0, 0.0),
             radius: 1.0,
-            // color: Alpha {
-            //     color: Default::default(),
-            //     alpha: 1.0,
-            // }
             color,
         }
     }
