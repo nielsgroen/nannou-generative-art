@@ -1,6 +1,5 @@
 use nannou::color::Alpha;
 use nannou::prelude::*;
-use crate::scale_coords;
 
 
 pub const MAX_VELOCITY: f32 = 40.0;
@@ -44,3 +43,8 @@ impl Particle {
     }
 }
 
+pub fn scale_coords(app: &App, coords: Point2) -> Point2 {
+    let win = app.window_rect();
+
+    (coords - win.bottom_left()) / win.wh()
+}
