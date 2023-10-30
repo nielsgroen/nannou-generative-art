@@ -111,24 +111,13 @@ fn model(app: &App) -> Model {
 fn view(app: &App, model: &Model, frame: Frame) {
     let win = app.window_rect();
     let draw = app.draw();
-    let time_passed = app.duration.since_prev_update.as_secs_f32();
+    // let time_passed = app.duration.since_prev_update.as_secs_f32();
 
     if app.elapsed_frames() < 2 {
         draw.background().color(BACKGROUND_COLOR);
     }
 
-    // draw.background().color(BACKGROUND_COLOR);
     draw.rect().wh(win.wh()).xy(win.xy()).color(Alpha { color: BACKGROUND_COLOR, alpha: 0.02 });
-    // let direction = nannou::glam::Quat::
-    // let camera = nannou::glam::Mat4::from_translation(vec3(1000.0, 0.0, 0.0));
-    // let camera = mat4(
-    //     vec4(1.0, 0.0, 0.3, -1000.0),
-    //     vec4(0.0, 1.0, 0.3, -1000.0),
-    //     vec4(0.0, 0.0, 1.0, -1000.0),
-    //     vec4(0.0, 0.0, 0.0, 0.0),
-    // );
-    // println!("{:?}", camera);
-    // let
     let y_rotation = mat3(
         vec3( model.camera_angle.cos(), 0.0, model.camera_angle.sin()),
         vec3( 0.0,                      1.0, 0.0                     ),
@@ -151,17 +140,9 @@ fn view(app: &App, model: &Model, frame: Frame) {
             let x = rotated_position.x;
             let y = rotated_position.y;
             let z = rotated_position.z + 30.0;
-            // let cam_coords = camera * vec4(
-            //     particle.position.x,
-            //     particle.position.y,
-            //     particle.position.z,
-            //     1.0
-            // );
-            // println!("{:?}", cam_coords);
             draw.ellipse()
                 .radius(particle.radius / z * 20.0)
                 .color(Alpha { color: particle.color.color, alpha: particle.color.alpha })
-                // .xy(cam_coords.xy());
                 .xy(pt2((x / z) * win.w() / 2.0, (y / z) * win.h() / 2.0));
         }
     }
