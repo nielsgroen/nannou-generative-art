@@ -63,7 +63,6 @@ impl Camera {
         let projection_matrix = self.get_projection_matrix();
 
         projection_matrix * view_matrix
-        // view_matrix.transpose() * projection_matrix.transpose()  // TODO: remove
     }
 
     pub fn get_z_near(&self) -> f32 {
