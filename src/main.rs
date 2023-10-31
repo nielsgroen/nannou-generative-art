@@ -10,12 +10,15 @@ use lazy_static::lazy_static;
 use nannou::app::Builder;
 use nannou::color::Alpha;
 use crate::particle::Particle2;
+use crate::scenes::base3d::Base3DScene;
 use crate::scenes::lorenz::{LorenzOptions, LorenzScene};
 use crate::scenes::perlin_flow::{PerlinFlowOptions, PerlinFlowScene};
 use crate::scenes::Scene;
 
 mod particle;
 mod scenes;
+#[path="3d/mod.rs"]
+mod math_3d;
 
 lazy_static! {
     static ref ARGS: Args = Args::parse();
@@ -51,7 +54,8 @@ enum SceneArgs {
         /// The beta from the Lorenz equation, see wikipedia
         #[arg(long, default_value_t = 2.66667)]
         beta: f32,
-    }
+    },
+    Base3d {},
 }
 
 fn main() {
@@ -66,6 +70,9 @@ fn main() {
         }
         SceneArgs::Lorenz { .. } => {
             LorenzScene::new_scene(&LorenzOptions::from_args(&args)).app().run();
+        }
+        SceneArgs::Base3d { .. } => {
+            Base3DScene::new_scene(&()).app().run();
         }
     }
 

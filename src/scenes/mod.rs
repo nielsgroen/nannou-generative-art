@@ -1,5 +1,6 @@
 use crate::Args;
 
+pub mod base3d;
 pub mod perlin_flow;
 pub mod lorenz;
 

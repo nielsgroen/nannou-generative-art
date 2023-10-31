@@ -77,6 +77,11 @@ impl Particle3 {
         self.process_force(force, time_passed);
         self.move_at_velocity(time_passed);
     }
+
+    /// Returns a transformed particle position
+    pub fn transform_position(&self, transformation_matrix: Mat4) -> Vec4 {
+        transformation_matrix * Vec4::from((self.position, 1.0))
+    }
 }
 
 
