@@ -4,7 +4,7 @@ use nannou::app::Builder;
 use nannou::color::Alpha;
 use nannou::glam::Vec4Swizzles;
 use crate::math_3d::Camera;
-use crate::math_3d::controls::{CameraControls, CenteredCameraControls};
+use crate::math_3d::controls::{CameraControls, CenteredCameraControls, MouseBasedCenteredCameraControls};
 use crate::particle::Particle3;
 use crate::scenes::Scene;
 
@@ -34,9 +34,8 @@ impl Model {
                 0.25 * PI,
                 1.0,
             ),
-            camera_controls: Box::new(CenteredCameraControls::new(
-                pt3(0.0, 0.0, 0.0),
-                1.0,
+            camera_controls: Box::new(MouseBasedCenteredCameraControls::new(
+                vec3(0.0, 0.0, 0.0),
                 1.0,
             )),
             points: vec![

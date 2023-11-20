@@ -132,3 +132,98 @@ impl CameraControls for CenteredCameraControls {
         camera.look_at(self.center);
     }
 }
+
+pub struct MouseBasedCenteredCameraControls {
+    pub center: Point3,
+    pub speed: f32,
+    // pub zoom_speed: f32,
+    // pub left_pressed: bool,
+    // pub right_pressed: bool,
+    // pub up_pressed: bool,
+    // pub down_pressed: bool,
+    // pub zoom_in_pressed: bool,
+    // pub zoom_out_pressed: bool,
+    pub mouse_pressed: bool,
+    pub mouse_position: Point2,
+    pub mouse_position_prev: Point2,
+}
+
+impl MouseBasedCenteredCameraControls {
+    pub fn new(center: Point3, speed: f32) -> Self {
+        Self {
+            center,
+            speed,
+            // zoom_speed,
+            // left_pressed: false,
+            // right_pressed: false,
+            // up_pressed: false,
+            // down_pressed: false,
+            // zoom_in_pressed: false,
+            // zoom_out_pressed: false,
+            mouse_pressed: false,
+            mouse_position: pt2(0.0, 0.0),
+            mouse_position_prev: pt2(0.0, 0.0),
+        }
+    }
+}
+
+impl CameraControls for MouseBasedCenteredCameraControls {
+    fn event(&mut self, app: &App, event: Event) {
+        match event {
+            Event::WindowEvent { simple: Some(inner_event), .. } => {
+                match inner_event {
+                    MousePressed(_) => {
+                        self.mouse_pressed = true;
+                        self.mouse_position_prev = app.mouse.position();
+                    },
+                    MouseReleased(_) => {
+                        self.mouse_pressed = false;
+                    },
+                    MouseMoved(position) => {
+                        self.mouse_position = position;
+                    },
+                    _ => {},
+                }
+            },
+            _ => {},
+        }
+    }
+
+    fn apply_to_camera(&self, camera: &mut Camera, app: &App) {
+        let mut direction = vec3(0.0, 0.0, 0.0);
+
+        if self.mouse_pressed {
+            let mouse_delta = self.mouse_position - self.mouse_position_prev;
+            direction += vec3(mouse_delta.x, mouse_delta.y, 0.0);
+        }
+
+        if direction.length() > 0.0 {
+            direction = direction.normalize();
+        }
+        direction = self.speed * direction;
+
+        // let mut zoom_direction = vec3(0.0, 0.0, 0.0);
+        //
+        // if self.zoom_in_pressed {
+        //     zoom_direction += vec3(0.0, 0.0, 1.0);
+        // }
+        // if self.zoom_out_pressed {
+        //     zoom_direction += vec3(0.0, 0.0, -1.0);
+        // }
+        //
+        // if zoom_direction.length() > 0.0 {
+        //     zoom_direction = zoom_direction.normalize();
+        // }
+        // zoom_direction = self.zoom_speed * zoom_direction;
+
+        let velocity = direction; // + zoom_direction;
+
+        let mut camera_velocity = vec3(0.0, 0.0, 0.0);
+        camera_velocity += camera.view_direction * velocity.z;
+        camera_velocity += camera.up * velocity.y;
+        camera_velocity += camera.view_direction.cross(camera.up) * velocity.x;
+
+        camera.position += camera_velocity * app.duration.since_prev_update.as_secs_f32();
+        camera.look_at(self.center);
+    }
+}
