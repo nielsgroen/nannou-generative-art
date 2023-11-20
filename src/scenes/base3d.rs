@@ -4,6 +4,7 @@ use nannou::app::Builder;
 use nannou::color::Alpha;
 use nannou::glam::Vec4Swizzles;
 use crate::math_3d::Camera;
+use crate::math_3d::controls::{CameraControls, CenteredCameraControls};
 use crate::particle::Particle3;
 use crate::scenes::Scene;
 
@@ -14,10 +15,12 @@ pub struct Base3DScene {
     model_fn: fn(app: &App) -> Model,
     update_fn: fn(app: &App, model: &mut Model, _update: Update),
     view_fn: fn(app: &App, model: &Model, frame: Frame),
+    event_fn: fn(app: &App, model: &mut Model, event: Event),
 }
 
 pub struct Model {
     camera: Camera,
+    camera_controls: Box<dyn CameraControls>,
     points: Vec<Particle3>
 }
 
@@ -31,6 +34,11 @@ impl Model {
                 0.25 * PI,
                 1.0,
             ),
+            camera_controls: Box::new(CenteredCameraControls::new(
+                pt3(0.0, 0.0, 0.0),
+                1.0,
+                1.0,
+            )),
             points: vec![
                 Particle3::new(
                     pt3(1.0, 1.0, 1.0),
@@ -112,11 +120,12 @@ impl Scene for Base3DScene {
             model_fn: model,
             update_fn: update,
             view_fn: view,
+            event_fn: event,
         }
     }
 
     fn app(&self) -> Builder<Self::Model> {
-        nannou::app(self.model_fn).update(self.update_fn).simple_window(self.view_fn).size(1800, 1200)
+        nannou::app(self.model_fn).update(self.update_fn).event(self.event_fn).simple_window(self.view_fn).size(1800, 1200)
     }
 }
 
@@ -125,11 +134,13 @@ fn model(_app: &App) -> Model {
     Model::new()
 }
 
-fn update(app: &App, model: &mut Model, _update: Update) {
+fn update(app: &App, model: &mut Model, update: Update) {
     let win = app.window_rect();
     let aspect_ratio = win.x.len() / win.y.len();
 
     model.camera.aspect_ratio(aspect_ratio);
+
+    model.camera_controls.apply_to_camera(&mut model.camera, app);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -152,3 +163,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.to_frame(app, &frame).unwrap();
 }
 
+fn event(app: &App, model: &mut Model, event: Event) {
+    model.camera_controls.event(app, event);
+}

@@ -4,6 +4,7 @@ use nannou::prelude::*;
 use crate::math_3d::projection::{OrthographicProjection, PerspectiveProjection, Projection};
 
 pub mod projection;
+pub mod controls;
 
 /// For turning 3D coordinates to screen space
 /// The screen space is defined as the area of (x, y) values with range `[-1, 1]`
@@ -43,7 +44,9 @@ impl Camera {
 
     /// Turns the camera to look at the given coordinates.
     pub fn look_at(&mut self, target_position: Point3) {
+        let right = self.view_direction.cross(self.up).normalize();
         self.view_direction = (target_position - self.position).normalize();
+        self.up = right.cross(self.view_direction).normalize();
     }
 
     /// Returns the matrix transformation that centers the world around the camera.
