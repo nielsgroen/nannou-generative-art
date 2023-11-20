@@ -115,7 +115,7 @@ impl Scene for Base3DScene {
     type SceneOptions = ();
     type Model = Model;
 
-    fn new_scene(options: &Self::SceneOptions) -> Self {
+    fn new_scene(_options: &Self::SceneOptions) -> Self {
         Self {
             model_fn: model,
             update_fn: update,
@@ -134,7 +134,7 @@ fn model(_app: &App) -> Model {
     Model::new()
 }
 
-fn update(app: &App, model: &mut Model, update: Update) {
+fn update(app: &App, model: &mut Model, _update: Update) {
     let win = app.window_rect();
     let aspect_ratio = win.x.len() / win.y.len();
 
