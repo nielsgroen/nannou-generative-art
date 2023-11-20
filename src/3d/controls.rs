@@ -143,7 +143,7 @@ pub struct MouseBasedCenteredCameraControls {
     // pub down_pressed: bool,
     // pub zoom_in_pressed: bool,
     // pub zoom_out_pressed: bool,
-    pub mouse_pressed: bool,
+    // pub mouse_pressed: bool,
     pub mouse_position: Point2,
     pub mouse_position_prev: Point2,
 }
@@ -160,7 +160,7 @@ impl MouseBasedCenteredCameraControls {
             // down_pressed: false,
             // zoom_in_pressed: false,
             // zoom_out_pressed: false,
-            mouse_pressed: false,
+            // mouse_pressed: false,
             mouse_position: pt2(0.0, 0.0),
             mouse_position_prev: pt2(0.0, 0.0),
         }
@@ -170,20 +170,10 @@ impl MouseBasedCenteredCameraControls {
 impl CameraControls for MouseBasedCenteredCameraControls {
     fn event(&mut self, app: &App, event: Event) {
         match event {
-            Event::WindowEvent { simple: Some(inner_event), .. } => {
-                match inner_event {
-                    MousePressed(_) => {
-                        self.mouse_pressed = true;
-                        self.mouse_position_prev = app.mouse.position();
-                    },
-                    MouseReleased(_) => {
-                        self.mouse_pressed = false;
-                    },
-                    MouseMoved(position) => {
-                        self.mouse_position = position;
-                    },
-                    _ => {},
-                }
+            Event::Update(update) => {
+                self.mouse_position = app.mouse.position();
+                self.mouse_position_prev = self.mouse_position_prev + (self.mouse_position - self.mouse_position_prev) * update.since_last.as_secs_f32();
+                self.mouse_position_prev = (self.mouse_position_prev - self.mouse_position).clamp_length_max(2.0) + self.mouse_position;
             },
             _ => {},
         }
@@ -192,14 +182,9 @@ impl CameraControls for MouseBasedCenteredCameraControls {
     fn apply_to_camera(&self, camera: &mut Camera, app: &App) {
         let mut direction = vec3(0.0, 0.0, 0.0);
 
-        if self.mouse_pressed {
-            let mouse_delta = self.mouse_position - self.mouse_position_prev;
-            direction += vec3(mouse_delta.x, mouse_delta.y, 0.0);
-        }
+        let mouse_delta = self.mouse_position - self.mouse_position_prev;
+        direction += vec3(mouse_delta.x, mouse_delta.y, 0.0);
 
-        if direction.length() > 0.0 {
-            direction = direction.normalize();
-        }
         direction = self.speed * direction;
 
         // let mut zoom_direction = vec3(0.0, 0.0, 0.0);
