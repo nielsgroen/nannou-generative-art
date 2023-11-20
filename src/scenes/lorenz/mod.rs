@@ -9,6 +9,8 @@ use rand::{Rng, thread_rng};
 use clap::Parser;
 use nannou::glam::Vec4Swizzles;
 use crate::{Args, SceneArgs};
+use crate::math_3d::Camera;
+use crate::math_3d::controls::{CameraControls, CenteredCameraControls};
 use crate::particle::Particle3;
 use crate::scenes::Scene;
 
@@ -27,6 +29,7 @@ pub struct LorenzScene {
     model_fn: fn(app: &App) -> Model,
     update_fn: fn(app: &App, model: &mut Model, _update: Update),
     view_fn: fn(app: &App, model: &Model, frame: Frame),
+    event_fn: fn(app: &App, model: &mut Model, event: Event),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -57,16 +60,17 @@ impl Scene for LorenzScene {
     type Model = Model;
 
 
-    fn new_scene(options: &Self::SceneOptions) -> Self {
+    fn new_scene(_options: &Self::SceneOptions) -> Self {
         Self {
             model_fn: model,
             update_fn: update,
             view_fn: view,
+            event_fn: event,
         }
     }
 
     fn app(&self) -> Builder<Self::Model> {
-        nannou::app(self.model_fn).update(self.update_fn).simple_window(self.view_fn).size(1800, 1200)
+        nannou::app(self.model_fn).update(self.update_fn).event(self.event_fn).simple_window(self.view_fn).size(1800, 1200)
     }
 }
 
@@ -76,8 +80,9 @@ pub struct Model {
     pub rho: f32,  // https://en.wikipedia.org/wiki/Lorenz_system
     pub sigma: f32,
     pub beta: f32,
-    pub camera_angle: f32,
-    // TODO: add camera
+    // pub camera_angle: f32,
+    pub camera: Camera,
+    pub camera_controls: Box<dyn CameraControls>,
 }
 
 
@@ -99,12 +104,30 @@ fn model(app: &App) -> Model {
         )
     }).collect::<Vec<_>>();
 
+    let cam_position = pt3(300.0, 10.0, 10.0);
+    let view_center = vec3(0.0, 0.0, 0.0);
+    let view_direction = (view_center - vec3(10.0, 10.0, 10.0)).normalize();
+    let up = vec3(0.0, 1.0, 0.0);
+    let right = view_direction.cross(up).normalize();
+    let up = right.cross(view_direction).normalize(); // calculate the real up vector
+
     Model {
         particles,
         rho: OPTIONS.rho,
         sigma: OPTIONS.sigma,
         beta: OPTIONS.beta,
-        camera_angle: 0.0,
+        camera: Camera::new_perspective(
+            cam_position,
+            view_direction,
+            up,
+            0.25,
+            win.w() / win.h(),
+        ),
+        camera_controls: Box::new(CenteredCameraControls::new(
+            view_center,
+            100.0,
+            100.0,
+        )),
     }
 }
 
@@ -118,33 +141,31 @@ fn view(app: &App, model: &Model, frame: Frame) {
     }
 
     draw.rect().wh(win.wh()).xy(win.xy()).color(Alpha { color: BACKGROUND_COLOR, alpha: 0.02 });
-    let y_rotation = mat3(
-        vec3( model.camera_angle.cos(), 0.0, model.camera_angle.sin()),
-        vec3( 0.0,                      1.0, 0.0                     ),
-        vec3(-model.camera_angle.sin(), 0.0, model.camera_angle.cos()),
-    );
-    let x_rotation = mat3(
-        vec3(1.0,                      0.0, 0.0                     ),
-        vec3(0.0, model.camera_angle.cos(), model.camera_angle.sin()),
-        vec3(0.0, -model.camera_angle.sin(), model.camera_angle.cos()),
-    );
-    let z_rotation = mat3(
-        vec3( model.camera_angle.cos(), model.camera_angle.sin(), 0.0),
-        vec3(-model.camera_angle.sin(), model.camera_angle.cos(), 0.0),
-        vec3( 0.0,                      0.0, 1.0                     ),
-    );
+    // let y_rotation = mat3(
+    //     vec3( model.camera_angle.cos(), 0.0, model.camera_angle.sin()),
+    //     vec3( 0.0,                      1.0, 0.0                     ),
+    //     vec3(-model.camera_angle.sin(), 0.0, model.camera_angle.cos()),
+    // );
+    // let x_rotation = mat3(
+    //     vec3(1.0,                      0.0, 0.0                     ),
+    //     vec3(0.0, model.camera_angle.cos(), model.camera_angle.sin()),
+    //     vec3(0.0, -model.camera_angle.sin(), model.camera_angle.cos()),
+    // );
+    // let z_rotation = mat3(
+    //     vec3( model.camera_angle.cos(), model.camera_angle.sin(), 0.0),
+    //     vec3(-model.camera_angle.sin(), model.camera_angle.cos(), 0.0),
+    //     vec3( 0.0,                      0.0, 1.0                     ),
+    // );
+    let transformation_matrix = model.camera.get_transformation_matrix();
 
-    if app.elapsed_frames() < 200000 {
-        for particle in model.particles.iter() {
-            let rotated_position = x_rotation * y_rotation * z_rotation * particle.position;
-            let x = rotated_position.x;
-            let y = rotated_position.y;
-            let z = rotated_position.z + 30.0;
-            draw.ellipse()
-                .radius(particle.radius / z * 20.0)
-                .color(Alpha { color: particle.color.color, alpha: particle.color.alpha })
-                .xy(pt2((x / z) * win.w() / 2.0, (y / z) * win.h() / 2.0));
-        }
+    for particle in model.particles.iter() {
+        let new_particle_position = particle.transform_position(transformation_matrix);
+        let nannou_coordinate_transformation = Mat4::from_diagonal(vec4(win.x.end, win.y.end, 1.0, 1.0));
+        let new_particle_position = nannou_coordinate_transformation * new_particle_position;
+        draw.ellipse()
+            .radius(particle.radius / new_particle_position.w * 50.0)
+            .color(particle.color)
+            .xy(new_particle_position.xy() / new_particle_position.w);
     }
     draw.to_frame(app, &frame).unwrap();
 }
@@ -170,5 +191,10 @@ fn update(app: &App, model: &mut Model, _update: Update) {
         particle.position += velocity * time_passed / 10.0;
     }
 
-    model.camera_angle += time_passed * 0.1;
+    // model.camera_angle += time_passed * 0.1;
+    model.camera_controls.apply_to_camera(&mut model.camera, app);
+}
+
+fn event(app: &App, model: &mut Model, event: Event) {
+    model.camera_controls.event(app, event);
 }
