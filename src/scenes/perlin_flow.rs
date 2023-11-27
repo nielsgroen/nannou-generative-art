@@ -97,8 +97,6 @@ impl Scene for PerlinFlowScene {
         // });
 
 
-        // todo!();
-
         nannou::app(self.model_fn)
             .update(self.update_fn)
             .simple_window(self.view_fn)
