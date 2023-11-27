@@ -4,9 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 
 [dependencies]
 clap = { version = "4.4.6", features = ["derive"] }
 lazy_static = "1.4.0"
-nannou = "0.18.1"
+#nannou = "0.18.1"
+nannou = { version="0.18.1", git ="https://github.com/nannou-org/nannou.git", rev = "287be8a4d075b17332ca0bf34649f5d25e751c00", features =["wasm-experimental"]}
 rand = "0.8.5"
+async-std = "1.12.0"
+async-trait = "0.1.74"
+wasm-bindgen = "0.2.89"
+wasm-bindgen-futures = "0.4.25"

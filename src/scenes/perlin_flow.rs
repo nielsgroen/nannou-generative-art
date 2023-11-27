@@ -5,10 +5,12 @@ use nannou::noise::NoiseFn;
 use nannou::math::num_traits::Float;
 use nannou::prelude::*;
 
+use async_trait::async_trait;
 use clap::Parser;
 use lazy_static::lazy_static;
 use nannou::app::Builder;
 use nannou::color::Alpha;
+use nannou::wgpu::{DeviceDescriptor, Limits};
 use crate::{Args, SceneArgs};
 use crate::particle::{Particle2, scale_coords};
 use crate::scenes::Scene;
@@ -49,6 +51,7 @@ impl PerlinFlowOptions {
     }
 }
 
+#[async_trait]
 impl Scene for PerlinFlowScene {
     type SceneOptions = PerlinFlowOptions;
     type Model = Model<Perlin>;
@@ -62,8 +65,44 @@ impl Scene for PerlinFlowScene {
         }
     }
 
-    fn app(&self) -> Builder<Self::Model> {
-        nannou::app(self.model_fn).update(self.update_fn).simple_window(self.view_fn).size(1800, 1200)
+    async fn app(&self) -> Builder<Self::Model> {
+        // let model = Model {
+        //     seed: 0,
+        //     noise_fn: (),
+        //     noise_scale: 0.0,
+        //     particles: vec![],
+        // };
+        // thread_local!(static MODEL: RefCell<Option<Model>> = Default::default());
+        //
+        // let builder = app::Builder::new_async(|app| {
+        //     Box::new(async move {
+        //         let device_descriptor = DeviceDescriptor {
+        //             limits: Limits {
+        //                 max_texture_dimension_2d: 8192,
+        //                 ..Limits::downlevel_webgl2_defaults()
+        //             },
+        //             ..Default::default()
+        //         };
+        //
+        //         app.new_window()
+        //             .device_descriptor(device_descriptor)
+        //             .view(self.view_fn)
+        //             .title("n0ls Base3D")
+        //             .build_async()
+        //             .await
+        //             .unwrap();
+        //
+        //         (self.model_fn)(app)
+        //     })
+        // });
+
+
+        // todo!();
+
+        nannou::app(self.model_fn)
+            .update(self.update_fn)
+            .simple_window(self.view_fn)
+            .size(1800, 1200)
     }
 }
 

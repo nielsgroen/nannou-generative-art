@@ -7,6 +7,7 @@ use nannou::prelude::*;
 
 use clap::{Parser, Subcommand};
 use lazy_static::lazy_static;
+use async_std::task::block_on;
 use nannou::app::Builder;
 use nannou::color::Alpha;
 use crate::particle::Particle2;
@@ -66,13 +67,16 @@ fn main() {
 
     match args.scene {
         SceneArgs::PerlinFlow { .. } => {
-            PerlinFlowScene::new_scene(&PerlinFlowOptions::from_args(&args)).app().run();
+            let app = block_on(PerlinFlowScene::new_scene(&PerlinFlowOptions::from_args(&args)).app());
+            app.run();
         }
         SceneArgs::Lorenz { .. } => {
-            LorenzScene::new_scene(&LorenzOptions::from_args(&args)).app().run();
+            let app = block_on(LorenzScene::new_scene(&LorenzOptions::from_args(&args)).app());
+            app.run();
         }
         SceneArgs::Base3d { .. } => {
-            Base3DScene::new_scene(&()).app().run();
+            let app = block_on(Base3DScene::new_scene(&()).app());
+            app.run();
         }
     }
 

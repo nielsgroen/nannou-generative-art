@@ -7,6 +7,7 @@ use nannou::event::Update;
 use nannou::geom::pt3;
 use rand::{Rng, thread_rng};
 use clap::Parser;
+use async_trait::async_trait;
 use nannou::glam::Vec4Swizzles;
 use crate::{Args, SceneArgs};
 use crate::math_3d::Camera;
@@ -55,6 +56,7 @@ impl LorenzOptions {
 }
 
 
+#[async_trait]
 impl Scene for LorenzScene {
     type SceneOptions = LorenzOptions;
     type Model = Model;
@@ -69,8 +71,12 @@ impl Scene for LorenzScene {
         }
     }
 
-    fn app(&self) -> Builder<Self::Model> {
-        nannou::app(self.model_fn).update(self.update_fn).event(self.event_fn).simple_window(self.view_fn).size(1800, 1200)
+    async fn app(&self) -> Builder<Self::Model> {
+        nannou::app(self.model_fn)
+            .update(self.update_fn)
+            .event(self.event_fn)
+            .simple_window(self.view_fn)
+            .size(1800, 1200)
     }
 }
 

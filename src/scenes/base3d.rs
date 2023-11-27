@@ -1,8 +1,12 @@
+use std::cell::RefCell;
+
 use nannou::prelude::*;
 use nannou::{App, Frame};
 use nannou::app::Builder;
 use nannou::color::Alpha;
 use nannou::glam::Vec4Swizzles;
+use async_trait::async_trait;
+use nannou::wgpu::{DeviceDescriptor, Limits};
 use crate::math_3d::Camera;
 use crate::math_3d::controls::{CameraControls, CenteredCameraControls, MouseBasedCenteredCameraControls};
 use crate::particle::Particle3;
@@ -110,6 +114,7 @@ impl Model {
 }
 
 
+#[async_trait]
 impl Scene for Base3DScene {
     type SceneOptions = ();
     type Model = Model;
@@ -123,8 +128,44 @@ impl Scene for Base3DScene {
         }
     }
 
-    fn app(&self) -> Builder<Self::Model> {
-        nannou::app(self.model_fn).update(self.update_fn).event(self.event_fn).simple_window(self.view_fn).size(1800, 1200)
+    async fn app(&self) -> Builder<Self::Model> {
+        let model = Model::new();
+
+        thread_local!(static MODEL: RefCell<Option<Model>> = Default::default());
+        MODEL.with(|m| m.borrow_mut().replace(model));
+
+        let builder = app::Builder::new_async(|app| {
+            Box::new(async move {
+                let device_descriptor = DeviceDescriptor {
+                    limits: Limits {
+                        max_texture_dimension_2d: 8192,
+                        ..Limits::downlevel_webgl2_defaults()
+                    },
+                    ..Default::default()
+                };
+
+                app.new_window()
+                    .device_descriptor(device_descriptor)
+                    .view(view)
+                    .title("n0ls Base3D")
+                    .build_async()
+                    .await
+                    .unwrap();
+
+                MODEL.with(|m| m.borrow_mut().take().unwrap())
+            })
+        });
+
+        builder
+            .update(self.update_fn)
+            .event(self.event_fn)
+
+        // Old code
+        // nannou::app(self.model_fn)
+        //     .update(self.update_fn)
+        //     .event(self.event_fn)
+        //     .simple_window(self.view_fn)
+        //     .size(1800, 1200)
     }
 }
 
