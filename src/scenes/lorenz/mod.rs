@@ -147,21 +147,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     }
 
     draw.rect().wh(win.wh()).xy(win.xy()).color(Alpha { color: BACKGROUND_COLOR, alpha: 0.02 });
-    // let y_rotation = mat3(
-    //     vec3( model.camera_angle.cos(), 0.0, model.camera_angle.sin()),
-    //     vec3( 0.0,                      1.0, 0.0                     ),
-    //     vec3(-model.camera_angle.sin(), 0.0, model.camera_angle.cos()),
-    // );
-    // let x_rotation = mat3(
-    //     vec3(1.0,                      0.0, 0.0                     ),
-    //     vec3(0.0, model.camera_angle.cos(), model.camera_angle.sin()),
-    //     vec3(0.0, -model.camera_angle.sin(), model.camera_angle.cos()),
-    // );
-    // let z_rotation = mat3(
-    //     vec3( model.camera_angle.cos(), model.camera_angle.sin(), 0.0),
-    //     vec3(-model.camera_angle.sin(), model.camera_angle.cos(), 0.0),
-    //     vec3( 0.0,                      0.0, 1.0                     ),
-    // );
+
     let transformation_matrix = model.camera.get_transformation_matrix();
 
     for particle in model.particles.iter() {

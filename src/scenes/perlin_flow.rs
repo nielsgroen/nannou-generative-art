@@ -1,4 +1,10 @@
+#[cfg(not(target_family = "wasm"))]
 use rand::{Rng, thread_rng};
+#[cfg(target_family = "wasm")]
+use rand::{Rng, SeedableRng, rngs::SmallRng};
+
+use std::cell::RefCell;
+
 use nannou::noise::{Perlin, Seedable};
 use nannou::noise;
 use nannou::noise::NoiseFn;
@@ -29,12 +35,14 @@ pub struct PerlinFlowScene {
     model_fn: fn(app: &App) -> Model<Perlin>,
     update_fn: fn(app: &App, model: &mut Model<Perlin>, _update: Update),
     view_fn: fn(app: &App, model: &Model<Perlin>, frame: Frame),
+    seed: Option<u32>,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct PerlinFlowOptions {
     pub show_vectors: bool,
     pub hide_dots: bool,
+    pub seed: Option<u32>,
 }
 
 impl PerlinFlowOptions {
@@ -44,6 +52,7 @@ impl PerlinFlowOptions {
                 Self {
                     show_vectors,
                     hide_dots,
+                    seed: Some(0),
                 }
             },
             _ => panic!("Can't construct PerlinFlowOptions from this scene type"),
@@ -58,49 +67,82 @@ impl Scene for PerlinFlowScene {
 
 
     fn new_scene(options: &Self::SceneOptions) -> Self {
+        let seed = options.seed;
+
         Self {
             model_fn: model,
             update_fn: update,
             view_fn: view,
+            seed,
         }
     }
 
     async fn app(&self) -> Builder<Self::Model> {
-        // let model = Model {
-        //     seed: 0,
-        //     noise_fn: (),
-        //     noise_scale: 0.0,
-        //     particles: vec![],
-        // };
-        // thread_local!(static MODEL: RefCell<Option<Model>> = Default::default());
-        //
-        // let builder = app::Builder::new_async(|app| {
-        //     Box::new(async move {
-        //         let device_descriptor = DeviceDescriptor {
-        //             limits: Limits {
-        //                 max_texture_dimension_2d: 8192,
-        //                 ..Limits::downlevel_webgl2_defaults()
-        //             },
-        //             ..Default::default()
-        //         };
-        //
-        //         app.new_window()
-        //             .device_descriptor(device_descriptor)
-        //             .view(self.view_fn)
-        //             .title("n0ls Base3D")
-        //             .build_async()
-        //             .await
-        //             .unwrap();
-        //
-        //         (self.model_fn)(app)
-        //     })
-        // });
+        // #[cfg(not(target_family = "wasm"))]
+        // let seed: u32 = thread_rng().gen();
+        // #[cfg(target_family = "wasm")]
+        // let seed: u32 = 0;
 
+        #[cfg(not(target_family = "wasm"))]
+        let mut rng = thread_rng();
 
-        nannou::app(self.model_fn)
+        #[cfg(target_family = "wasm")]
+        let mut rng = SmallRng::seed_from_u64(self.seed.unwrap_or(0b101101101) as u64);
+
+        let seed: u32 = rng.gen();
+        let noise_fn = noise::Perlin::new().set_seed(seed);
+
+        let model = Model {
+            seed,
+            noise_fn,
+            noise_scale: 4.0,
+            particles: vec![0; 1000].iter().map(|_|
+                Particle2::new(
+                    pt2(
+                        rng.gen_range(-300..300) as f32,
+                        rng.gen_range(-300..300) as f32,
+                    ),
+                    Alpha {
+                        color: WHITE.into_format(),
+                        alpha: 0.0003,
+                    }
+                )
+            ).collect(),
+        };
+        thread_local!(static MODEL: RefCell<Option<Model<Perlin>>> = Default::default());
+        MODEL.with(|m| m.borrow_mut().replace(model));
+
+        let builder = app::Builder::new_async(|app| {
+            Box::new(async move {
+                let device_descriptor = DeviceDescriptor {
+                    limits: Limits {
+                        max_texture_dimension_2d: 8192,
+                        ..Limits::downlevel_webgl2_defaults()
+                    },
+                    ..Default::default()
+                };
+
+                app.new_window()
+                    .device_descriptor(device_descriptor)
+                    .view(view::<Perlin>)
+                    .title("n0ls Perlin Flow")
+                    .size(1800, 1200)
+                    .build_async()
+                    .await
+                    .unwrap();
+
+                MODEL.with(|m| m.borrow_mut().take().unwrap())
+            })
+        });
+
+        builder
             .update(self.update_fn)
-            .simple_window(self.view_fn)
-            .size(1800, 1200)
+
+        // Old code
+        // nannou::app(self.model_fn)
+        //     .update(self.update_fn)
+        //     .simple_window(self.view_fn)
+        //     .size(1800, 1200)
     }
 }
 
@@ -119,7 +161,13 @@ pub struct Model<T>
 
 
 fn model(app: &App) -> Model<Perlin> {
-    let seed: u32 = thread_rng().gen();
+    #[cfg(not(target_family = "wasm"))]
+    let mut rng = thread_rng();
+
+    #[cfg(target_family = "wasm")]
+    let mut rng = SmallRng::seed_from_u64(0b101101101 as u64);
+
+    let seed = rng.gen();
     let noise_fn = noise::Perlin::new().set_seed(seed);
 
     let win = app.window_rect();
@@ -131,8 +179,8 @@ fn model(app: &App) -> Model<Perlin> {
         particles: vec![0; 1000].iter().map(|_|
             Particle2::new(
                 pt2(
-                    thread_rng().gen_range(win.x.start as i32 / 3..win.x.end as i32 / 3) as f32,
-                    thread_rng().gen_range(win.y.start as i32 / 3..win.y.end as i32 / 3) as f32,
+                    rng.gen_range(win.x.start as i32 / 3..win.x.end as i32 / 3) as f32,
+                    rng.gen_range(win.y.start as i32 / 3..win.y.end as i32 / 3) as f32,
                 ),
                 Alpha {
                     color: WHITE.into_format(),
@@ -166,6 +214,7 @@ fn view<T>(app: &App, model: &Model<T>, frame: Frame)
 
     let line_length = 12.0;
 
+    #[cfg(not(target_family = "wasm"))]
     if OPTIONS.show_vectors {
         for grid_x in 0..grid_size.0 {
             for grid_y in 0..grid_size.1 {
@@ -179,10 +228,15 @@ fn view<T>(app: &App, model: &Model<T>, frame: Frame)
         }
     }
 
+    #[cfg(not(target_family = "wasm"))]
     if !OPTIONS.hide_dots {
         for particle in model.particles.iter() {
             draw.ellipse().radius(particle.radius).color(Alpha { color: particle.color.color, alpha: particle.color.alpha * time_passed * 1000.0 }).xy(particle.position);
         }
+    }
+    #[cfg(target_family = "wasm")]
+    for particle in model.particles.iter() {
+        draw.ellipse().radius(particle.radius).color(Alpha { color: particle.color.color, alpha: particle.color.alpha * time_passed * 1000.0 }).xy(particle.position);
     }
 
     draw.to_frame(app, &frame).unwrap();

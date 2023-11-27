@@ -51,7 +51,22 @@ enum SceneArgs {
 
 #[wasm_bindgen]
 pub async fn main_base3d() {
+    #[cfg(debug_assertions)]
+    console_error_panic_hook::set_once();
+
     let app = Base3DScene::new_scene(&()).app().await;
     app.run();
 }
 
+#[wasm_bindgen]
+pub async fn main_perlin_flow(seed: u32) {
+    #[cfg(debug_assertions)]
+    console_error_panic_hook::set_once();
+
+    let app = PerlinFlowScene::new_scene(&PerlinFlowOptions {
+        show_vectors: false,
+        hide_dots: false,
+        seed: Some(seed),
+    }).app().await;
+    app.run();
+}
