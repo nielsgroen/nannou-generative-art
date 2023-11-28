@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use lazy_static::lazy_static;
 use nannou::prelude::*;
 use nannou::{App, Frame};
@@ -9,6 +11,7 @@ use rand::{Rng, thread_rng};
 use clap::Parser;
 use async_trait::async_trait;
 use nannou::glam::Vec4Swizzles;
+use nannou::wgpu::{DeviceDescriptor, Limits};
 use crate::{Args, SceneArgs};
 use crate::math_3d::Camera;
 use crate::math_3d::controls::{CameraControls, CenteredCameraControls};
@@ -72,11 +75,43 @@ impl Scene for LorenzScene {
     }
 
     async fn app(&self) -> Builder<Self::Model> {
-        nannou::app(self.model_fn)
+        let model = Model::new();
+
+        thread_local!(static MODEL: RefCell<Option<Model>> = Default::default());
+        MODEL.with(|m| m.borrow_mut().replace(model));
+
+        let builder = app::Builder::new_async(|app| {
+            Box::new(async move {
+                let device_descriptor = DeviceDescriptor {
+                    limits: Limits {
+                        max_texture_dimension_2d: 8192,
+                        ..Limits::downlevel_webgl2_defaults()
+                    },
+                    ..Default::default()
+                };
+
+                app.new_window()
+                    .device_descriptor(device_descriptor)
+                    .view(view)
+                    .title("n0ls Lorenz")
+                    .build_async()
+                    .await
+                    .unwrap();
+
+                MODEL.with(|m| m.borrow_mut().take().unwrap())
+            })
+        });
+
+        builder
             .update(self.update_fn)
             .event(self.event_fn)
-            .simple_window(self.view_fn)
-            .size(1800, 1200)
+
+        // Old code
+        // nannou::app(self.model_fn)
+        //     .update(self.update_fn)
+        //     .event(self.event_fn)
+        //     .simple_window(self.view_fn)
+        //     .size(1800, 1200)
     }
 }
 
@@ -91,50 +126,78 @@ pub struct Model {
     pub camera_controls: Box<dyn CameraControls>,
 }
 
+impl Model {
+    pub fn new() -> Self {
+        let particles = vec![0; 1000].into_iter().map(|_| {
+            Particle3::new(
+                pt3(
+                    thread_rng().gen_range(-10..10) as f32,
+                    thread_rng().gen_range(-10..10) as f32,
+                    thread_rng().gen_range(-10..10) as f32,
+                ),
+                Alpha {
+                    color: rgb(0.0, 0.0, 0.0),
+                    alpha: 0.99,
+                },
+                4.0,
+            )
+        }).collect::<Vec<_>>();
+
+        // let cam_position = pt3(300.0, 10.0, 10.0);
+        let cam_position = pt3(10.926121, 7.850386, 232.43593);
+        let view_center = vec3(0.0, 0.0, 0.0);
+        let view_direction = (view_center - vec3(10.0, 10.0, 10.0)).normalize();
+        let up = vec3(0.0, 1.0, 0.0);
+        let right = view_direction.cross(up).normalize();
+        let up = right.cross(view_direction).normalize(); // calculate the real up vector
+
+        #[cfg(not(target_family = "wasm"))]
+        return Model {
+            particles,
+            rho: OPTIONS.rho,
+            sigma: OPTIONS.sigma,
+            beta: OPTIONS.beta,
+            camera: Camera::new_perspective(
+                cam_position,
+                view_direction,
+                up,
+                0.25,
+                // win.w() / win.h(),
+                1.0, // so that WASM works
+            ),
+            camera_controls: Box::new(CenteredCameraControls::new(
+                view_center,
+                100.0,
+                100.0,
+            )),
+        };
+
+        #[cfg(target_family = "wasm")]
+        Model {
+            particles,
+            rho: 28.0,
+            sigma: 10.0,
+            beta: 2.66667,
+            camera: Camera::new_perspective(
+                cam_position,
+                view_direction,
+                up,
+                0.25,
+                1.0, // so that WASM works
+            ),
+            camera_controls: Box::new(CenteredCameraControls::new(
+                view_center,
+                100.0,
+                100.0,
+            )),
+        }
+    }
+}
+
 
 fn model(app: &App) -> Model {
-    let win = app.window_rect();
-
-    let particles = vec![0; 1000].into_iter().map(|_| {
-        Particle3::new(
-            pt3(
-                thread_rng().gen_range(-10..10) as f32,
-                thread_rng().gen_range(-10..10) as f32,
-                thread_rng().gen_range(-10..10) as f32,
-            ),
-            Alpha {
-                color: rgb(0.0, 0.0, 0.0),
-                alpha: 0.99,
-            },
-            4.0,
-        )
-    }).collect::<Vec<_>>();
-
-    let cam_position = pt3(300.0, 10.0, 10.0);
-    let view_center = vec3(0.0, 0.0, 0.0);
-    let view_direction = (view_center - vec3(10.0, 10.0, 10.0)).normalize();
-    let up = vec3(0.0, 1.0, 0.0);
-    let right = view_direction.cross(up).normalize();
-    let up = right.cross(view_direction).normalize(); // calculate the real up vector
-
-    Model {
-        particles,
-        rho: OPTIONS.rho,
-        sigma: OPTIONS.sigma,
-        beta: OPTIONS.beta,
-        camera: Camera::new_perspective(
-            cam_position,
-            view_direction,
-            up,
-            0.25,
-            win.w() / win.h(),
-        ),
-        camera_controls: Box::new(CenteredCameraControls::new(
-            view_center,
-            100.0,
-            100.0,
-        )),
-    }
+    // let win = app.window_rect();
+    Model::new()
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -189,4 +252,13 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
 fn event(app: &App, model: &mut Model, event: Event) {
     model.camera_controls.event(app, event);
+
+    // #[cfg(target_family = "wasm")]
+    // {
+    //     use crate::log;
+    //
+    //     log(&format!("Camera position: {:?}", model.camera.position));
+    //     log(&format!("Camera direction: {:?}", model.camera.view_direction));
+    //     log(&format!("Camera up: {:?}", model.camera.up));
+    // }
 }

@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use scenes::perlin_flow::{PerlinFlowOptions, PerlinFlowScene};
 use scenes::Scene;
 use crate::scenes::base3d::Base3DScene;
+use crate::scenes::lorenz::{LorenzOptions, LorenzScene};
 
 mod particle;
 mod scenes;
@@ -69,4 +70,23 @@ pub async fn main_perlin_flow(seed: u32) {
         seed: Some(seed),
     }).app().await;
     app.run();
+}
+
+#[wasm_bindgen]
+pub async fn main_lorenz() {
+    #[cfg(debug_assertions)]
+    console_error_panic_hook::set_once();
+
+    let app = LorenzScene::new_scene(&LorenzOptions {
+        rho: 28.0,
+        sigma: 10.0,
+        beta: 2.66667,
+    }).app().await;
+    app.run();
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
 }
